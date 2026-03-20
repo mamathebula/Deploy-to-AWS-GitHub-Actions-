@@ -1,0 +1,118 @@
+# ============================================================
+# GitHub Actions: Deploy CloudFormation to AWS (Standard Template)
+# ============================================================
+# Copy this file to: .github/workflows/deploy-to-aws.yml
+#
+# REQUIRED GITHUB SECRETS (Settings → Secrets → Actions):
+#   AWS_ACCESS_KEY_ID       - IAM user access key
+#   AWS_SECRET_ACCESS_KEY   - IAM user secret key
+#   NOTIFICATION_EMAIL      - Email for SNS notifications
+#
+# HOW TO USE:
+#   1. Copy this file to .github/workflows/deploy-to-aws.yml
+#   2. Change AWS_REGION to your region
+#   3. Add/remove deploy steps for your templates
+#   4. Push to main branch
+# ============================================================
+
+name: Deploy CloudFormation to AWS
+
+# ──────────────────────────────────────────────
+# WHEN: triggers on push to main when .yaml files change
+# ──────────────────────────────────────────────
+on:
+  push:
+    branches:
+      - main                              # only runs on main branch
+    paths:
+      - '*.yaml'                          # only runs if a .yaml file changed
+      # Exclude templates you don't want to auto-deploy:
+      # - '!my-template.yaml'
+
+# ──────────────────────────────────────────────
+# VARIABLES: shared across all jobs
+# ──────────────────────────────────────────────
+env:
+  AWS_REGION: us-west-1                   # ← change this to your region
+
+# ──────────────────────────────────────────────
+# JOBS: what runs on the server
+# ──────────────────────────────────────────────
+jobs:
+  deploy:
+    runs-on: ubuntu-latest                # free Ubuntu server from GitHub
+    steps:
+
+      # Step 1: Download your code onto the server
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Step 2: Log into AWS using your secrets
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ────────────────────────────────────────
+      # DEPLOY STEPS — add one per template
+      # Copy a block below and change:
+      #   - name:           description of the stack
+      #   --template-file:  your .yaml file
+      #   --stack-name:     name for the stack in AWS
+      #   --parameter-overrides: values for your template parameters
+      # ────────────────────────────────────────
+
+      # Stack 1: Example
+      - name: Deploy My Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file my-stack.yaml \
+            --stack-name my-stack \
+            --parameter-overrides \
+              NotificationEmail=${{ secrets.NOTIFICATION_EMAIL }} \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset
+
+      # Stack 2: Copy this block for each additional template
+      # - name: Deploy Another Stack
+      #   run: |
+      #     aws cloudformation deploy \
+      #       --template-file another-stack.yaml \
+      #       --stack-name another-stack \
+      #       --parameter-overrides \
+      #         NotificationEmail=${{ secrets.NOTIFICATION_EMAIL }} \
+      #         SomeParameter=some-value \
+      #       --capabilities CAPABILITY_NAMED_IAM \
+      #       --no-fail-on-empty-changeset
+
+# ============================================================
+# REFERENCE
+# ============================================================
+#
+# --template-file              Which .yaml file to deploy
+# --stack-name                 Name of the stack in AWS (lowercase-with-dashes)
+# --parameter-overrides        Values for template Parameters section
+# --capabilities               Required when template creates IAM roles
+#   CAPABILITY_NAMED_IAM       Needed for named IAM roles/policies
+#   CAPABILITY_IAM             Needed for unnamed IAM roles/policies
+#   CAPABILITY_AUTO_EXPAND     Needed for macros/transforms (SAM, etc.)
+# --no-fail-on-empty-changeset Don't fail if nothing changed since last deploy
+#
+# SCHEDULE OPTIONS (for EventBridge in your templates):
+#   rate(1 hour)     - every hour
+#   rate(2 hours)    - every 2 hours
+#   rate(1 day)      - once a day
+#   rate(7 days)     - once a week
+#
+# COMMON REGIONS:
+#   us-east-1        - N. Virginia
+#   us-west-1        - N. California
+#   us-west-2        - Oregon
+#   eu-west-1        - Ireland
+#   eu-central-1     - Frankfurt
+#   ap-southeast-1   - Singapore
+#   ap-southeast-2   - Sydney
+#   ap-northeast-1   - Tokyo
+# ============================================================
