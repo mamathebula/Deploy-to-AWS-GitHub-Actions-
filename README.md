@@ -118,6 +118,114 @@ on:
       - '!my-other-template.yaml'              # add more like this
 ```
 
+## Manual Setup (Step by Step)
+
+If you're setting this up from scratch, follow these steps in order.
+
+### Step 1: Create an IAM User in AWS
+
+This user gives GitHub Actions permission to deploy to your AWS account.
+
+1. Go to AWS Console → IAM → Users
+2. Click Create user
+3. User name: `github-actions-deployer`
+4. Click Next
+5. Select "Attach policies directly"
+6. Search for `AdministratorAccess` and check it
+7. Click Next → Create user
+
+Now create access keys:
+
+1. Click on the user you just created
+2. Go to Security credentials tab
+3. Scroll to Access keys → Click Create access key
+4. Select "Third-party service" → click Next
+5. Click Create access key
+6. Copy both values — you'll need them in the next step:
+   - Access key ID (looks like `AKIA...`)
+   - Secret access key (only shown once)
+
+### Step 2: Add Secrets to GitHub
+
+These secrets are encrypted and never shown in logs.
+
+1. Go to your GitHub repository (e.g., `https://github.com/yourusername/aws-cost-optimization`)
+2. Click Settings (top menu bar)
+3. Left sidebar → Secrets and variables → Actions
+4. Click "New repository secret"
+5. Add these three secrets one at a time:
+
+| Secret Name | Value |
+|-------------|-------|
+| `AWS_ACCESS_KEY_ID` | The access key ID from Step 1 |
+| `AWS_SECRET_ACCESS_KEY` | The secret access key from Step 1 |
+| `NOTIFICATION_EMAIL` | Your email address (for SNS alerts) |
+
+For each one: type the name, paste the value, click "Add secret."
+
+### Step 3: Create the Workflow File
+
+The workflow file tells GitHub what to do when you push code.
+
+Create this folder and file in your project:
+
+```
+.github/
+  workflows/
+    deploy-to-aws.yml
+```
+
+In your IDE terminal:
+
+```bash
+mkdir -p .github/workflows
+```
+
+Then create the file `.github/workflows/deploy-to-aws.yml` with the contents from the workflow section below, or copy the existing one from this repo.
+
+### Step 4: Push the Workflow to GitHub
+
+```bash
+git add .github/workflows/deploy-to-aws.yml
+```
+
+```bash
+git commit -m "Add GitHub Actions deploy workflow"
+```
+
+```bash
+git push
+```
+
+### Step 5: Confirm SNS Email Subscription
+
+After the first deploy, AWS sends a confirmation email for each stack's SNS topic.
+
+1. Check your inbox (and spam folder) for emails from `AWS Notifications`
+2. Click the "Confirm subscription" link in each email
+3. You'll get one email per stack (3 total for the current setup)
+
+Without confirming, you won't receive any notifications from the stacks.
+
+### Step 6: Verify It Worked
+
+1. Go to your GitHub repository → click the Actions tab
+2. You should see the workflow running (or completed)
+3. Click on it to see the logs for each step
+4. Green checkmark = all stacks deployed successfully
+
+Then verify in AWS:
+
+1. Go to AWS Console → CloudFormation
+2. Make sure you're in the correct region (`us-west-1`)
+3. You should see your stacks with status `CREATE_COMPLETE`
+
+### Done
+
+From now on, every time you push a `.yaml` file change to the `main` branch, GitHub Actions will automatically deploy it to AWS. No manual steps needed.
+
+---
+
 ## How to Use
 
 ### First Time Setup
